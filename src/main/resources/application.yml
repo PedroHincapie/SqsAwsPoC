@@ -1,0 +1,7 @@
+cloud:
+  aws:
+    credentials:
+      use-default-aws-credentials-chain: true
+    stack:      auto: false
+    region:      static: us-east-2
+      
