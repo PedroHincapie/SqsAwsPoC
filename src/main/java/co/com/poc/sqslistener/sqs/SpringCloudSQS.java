@@ -12,14 +12,27 @@ import org.springframework.stereotype.Component;
 @Component
 public class SpringCloudSQS {
 	private static final Logger logger = LoggerFactory.getLogger(SpringCloudSQS.class);
-	static final String QUEUE_NAME = "queue-pedro.fifo";
+	static final String QUEUE_AL_FALLA_CONSUMIDOR = "al-fallar-consumidor.fifo";
+	static final String QUEUE_AL_NO_EXISTIR_MENSAJE= "al-no-encontrar-mensajes-en-cola.fifo";
 
 	@Autowired
 	QueueMessagingTemplate queueMessagingTemplate;
 
+	//	Este método tiene por objetivo presentar la
+	//	estrategia diseñada para eventualidades de fallos en el consumidor para una cola. 
+	@SqsListener(value= QUEUE_AL_FALLA_CONSUMIDOR, deletionPolicy = SqsMessageDeletionPolicy.ON_SUCCESS)
+	public void recibirMensajesYErrorEnCliente(String message, @Header("SenderId") String senderId) {
+		logger.info("Received message: {}, having SenderId: {}", message, senderId);
+		System.err.println("mensaje: " + message + "id : " + senderId);
+		throw new RuntimeException("Pedro estas el error por ende va para la cola");
 
-	@SqsListener(value= QUEUE_NAME, deletionPolicy = SqsMessageDeletionPolicy.ON_SUCCESS)
-	public void recibirLosMensajes(String message, @Header("SenderId") String senderId) {
+	}
+
+	//	Este método tiene por objetivo presentar la estrategia diseñada para 
+	//	eventualidades en las que no se reciben mensajes por parte 
+	//	de la cola y mitigar costos.
+	@SqsListener(value= QUEUE_AL_FALLA_CONSUMIDOR, deletionPolicy = SqsMessageDeletionPolicy.ON_SUCCESS)
+	public void recibirCeroMensajes(String message, @Header("SenderId") String senderId) {
 		logger.info("Received message: {}, having SenderId: {}", message, senderId);
 		System.err.println("mensaje: " + message + "id : " + senderId);
 		throw new RuntimeException("Pedro estas el error por ende va para la cola");
