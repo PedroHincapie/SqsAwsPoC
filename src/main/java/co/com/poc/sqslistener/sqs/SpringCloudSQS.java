@@ -42,12 +42,11 @@ public class SpringCloudSQS {
 
 		//Validar el estado de la impresora
 		if(IMPRESORA_EN_FALLO) {
-
 			incrementarTiemporDeVisibilidadDeMensaje();
 			throw new RuntimeException("Pedro estas el error por ende va para la cola");
 		}
 
-		if(tenemosMensajeEnVisibilidad()) {
+		if(hayQueResetTiempoVisibilidad()) {
 			resetTiemporDeVisibilidadDeMensaje();
 		}
 
@@ -73,9 +72,8 @@ public class SpringCloudSQS {
 		//Realizar la solicitud con el cliente y obtener el valor
 		sqs.getQueueAttributes(requestAtri);
 		for(Entry<String, String> datos : sqs.getQueueAttributes(requestAtri).getAttributes().entrySet()) {
-			System.err.println("Valor :" + datos.getKey() + "dato :" + datos.getValue());
-
-		}
+			logger.info("Valor : {}  dato : {}",datos.getKey(),datos.getValue());
+		}              
 		Integer tiempoVisibilidad = Integer.parseInt(sqs.getQueueAttributes(requestAtri).getAttributes().get("VisibilityTimeout"));
 
 		logger.info("Tiempo de visibilidad actual : {} ", tiempoVisibilidad);
@@ -116,7 +114,7 @@ public class SpringCloudSQS {
 		logger.info("Valor Reset exitosamente");
 	}
 
-	private boolean tenemosMensajeEnVisibilidad() {
+	private boolean hayQueResetTiempoVisibilidad() {
 		//Crear el cliente
 		final AmazonSQS sqs = AmazonSQSClientBuilder.defaultClient();
 
@@ -125,18 +123,18 @@ public class SpringCloudSQS {
 
 		//Contruir lista con el atributo de la cola a necesitar
 		List<String> attributeNames = new ArrayList<>();
-		attributeNames.add("ApproximateNumberOfMessagesNotVisible");
+		attributeNames.add("All");
 
 		//Crear Objeto del request con el objeto a solicitar
 		GetQueueAttributesRequest requestAtri = new GetQueueAttributesRequest(queueUrl);
 		requestAtri.setAttributeNames(attributeNames);
 
 		//Realizar la solicitud con el cliente y obtener el valor
-		Integer numberOfMessagesNotVisibledato = Integer.parseInt(sqs.getQueueAttributes(requestAtri).getAttributes().get("ApproximateNumberOfMessagesNotVisible"));
+		String tiempoVisibilidad = sqs.getQueueAttributes(requestAtri).getAttributes().get("VisibilityTimeoutdato");
 
-		logger.info("Numero de mensaje en visibilidad : {} ", numberOfMessagesNotVisibledato);
+		logger.info("El tiempo de visibilidad actual es de {}", tiempoVisibilidad);
 
-		return numberOfMessagesNotVisibledato > 0;
+		return !TIEMPO_POR_DEFAULT.equals(tiempoVisibilidad);
 	}
 
 
