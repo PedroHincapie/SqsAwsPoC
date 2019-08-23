@@ -4,6 +4,7 @@ package co.com.poc.sqslistener.sqs;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +24,7 @@ import com.amazonaws.services.sqs.model.SetQueueAttributesRequest;
 @Component
 public class SpringCloudSQS {
 	private static final Logger logger = LoggerFactory.getLogger(SpringCloudSQS.class);
-	static final boolean IMPRESORA_EN_FALLO = true;
+	static final boolean IMPRESORA_EN_FALLO = false;
 
 	static final String QUEUE_AL_FALLA_CONSUMIDOR = "al-fallar-consumidor.fifo";
 	static final String QUEUE_AL_NO_EXISTIR_MENSAJE= "al-no-encontrar-mensajes-en-cola.fifo";
@@ -46,7 +47,10 @@ public class SpringCloudSQS {
 			throw new RuntimeException("Pedro estas el error por ende va para la cola");
 		}
 
-		resetTiemporDeVisibilidadDeMensaje();
+		if(tenemosMensajeEnVisibilidad()) {
+			resetTiemporDeVisibilidadDeMensaje();
+		}
+
 		logger.info("Mensaje exitoso y  procesado : {}, having SenderId: {}", message, senderId);
 	}
 
@@ -60,13 +64,18 @@ public class SpringCloudSQS {
 
 		//Contruir lista con el atributo de la cola a necesitar
 		List<String> attributeNames = new ArrayList<>();
-		attributeNames.add("VisibilityTimeout");
+		attributeNames.add("All");
 
 		//Crear Objeto del request con el objeto a solicitar
 		GetQueueAttributesRequest requestAtri = new GetQueueAttributesRequest(queueUrl);
 		requestAtri.setAttributeNames(attributeNames);
 
 		//Realizar la solicitud con el cliente y obtener el valor
+		sqs.getQueueAttributes(requestAtri);
+		for(Entry<String, String> datos : sqs.getQueueAttributes(requestAtri).getAttributes().entrySet()) {
+			System.err.println("Valor :" + datos.getKey() + "dato :" + datos.getValue());
+
+		}
 		Integer tiempoVisibilidad = Integer.parseInt(sqs.getQueueAttributes(requestAtri).getAttributes().get("VisibilityTimeout"));
 
 		logger.info("Tiempo de visibilidad actual : {} ", tiempoVisibilidad);
@@ -106,6 +115,30 @@ public class SpringCloudSQS {
 
 		logger.info("Valor Reset exitosamente");
 	}
+
+	private boolean tenemosMensajeEnVisibilidad() {
+		//Crear el cliente
+		final AmazonSQS sqs = AmazonSQSClientBuilder.defaultClient();
+
+		//Consultar la URL de la cola que se ajustara
+		final String queueUrl= sqs.getQueueUrl(QUEUE_AL_FALLA_CONSUMIDOR).getQueueUrl();
+
+		//Contruir lista con el atributo de la cola a necesitar
+		List<String> attributeNames = new ArrayList<>();
+		attributeNames.add("ApproximateNumberOfMessagesNotVisible");
+
+		//Crear Objeto del request con el objeto a solicitar
+		GetQueueAttributesRequest requestAtri = new GetQueueAttributesRequest(queueUrl);
+		requestAtri.setAttributeNames(attributeNames);
+
+		//Realizar la solicitud con el cliente y obtener el valor
+		Integer numberOfMessagesNotVisibledato = Integer.parseInt(sqs.getQueueAttributes(requestAtri).getAttributes().get("ApproximateNumberOfMessagesNotVisible"));
+
+		logger.info("Numero de mensaje en visibilidad : {} ", numberOfMessagesNotVisibledato);
+
+		return numberOfMessagesNotVisibledato > 0;
+	}
+
 
 	//	Este método tiene por objetivo presentar la estrategia diseñada para 
 	//	eventualidades en las que no se reciben mensajes por parte 
